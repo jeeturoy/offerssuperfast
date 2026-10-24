@@ -1,0 +1,45 @@
+name: Update deals from Telegram
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"   # every 15 minutes (GitHub may delay scheduled runs a few minutes)
+  workflow_dispatch:          # allows a manual "Run workflow" button
+  push:
+    branches: [main]
+    paths: ["scripts/**", ".github/workflows/update.yml"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-deals
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Scrape t.me/s/offerssuperfast
+        run: python scripts/scrape.py --channel offerssuperfast --limit 60
+
+      - name: Commit posts.json if changed
+        run: |
+          if git diff --quiet -- data/posts.json; then
+            echo "No changes"; exit 0
+          fi
+          git config user.name  "deals-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/posts.json
+          git commit -m "Update deals $(date -u +'%Y-%m-%d %H:%M UTC')"
+          git push
