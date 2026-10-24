@@ -97,6 +97,11 @@ def make_title(text, store):
 
 
 def detect_price(text):
+    # 1) "@price" on the first line (the main product) wins
+    first = text.strip().split("\n")[0] if text.strip() else ""
+    m = PRICE_RES[1].search(first)
+    if m:
+        return m.group(1).rstrip(".,")
     for line in text.split("\n"):
         m = BARE_RE.search(line.strip())
         if m and not OFF_CONTEXT.search(line):
